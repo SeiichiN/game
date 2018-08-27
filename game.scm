@@ -14,6 +14,16 @@
 ;; p127, p422
 ;; マップデータ
 ;;
+;;    # 0
+;;    |
+;;    |
+;;  1 #--# 3沼
+;;    |
+;;    |
+;; #--# 2
+;; 4
+;; 広場
+;;
 (define *dungeon*
   '(("あなたは森の北側にいる。道は南に続いている。"
      (s . 1))
@@ -33,14 +43,59 @@
 丈の短い、柔らかそうな草が一面に広場を覆っている。
 道が東に伸びている。"
      (e . 2))))
-;;    # 0
-;;    |
-;;    |
-;;  1 #--# 3沼
-;;    |
-;;    |
-;; #--# 2
-;; 4
-;; 広場
+
+(define-class <session> ()
+  ((sid      :init-keyword :sid)                  ; セッションID
+   (location :init-value (list-ref *dungeon* 0))  ; 現在のノード
+   (history  :init-value '())                     ; 訪れたノードの履歴
+   ))
+
+;; 整数をキーとしたハッシュテーブルを作成
+(define *sessions* (make-hash-table 'eqv?))       ; アクティブなセッション
+
+;; get-session
 ;;
+;; Params:
+;;     params -- (ex) http://localhost:8080/?s=123456
+;;
+;; Summery:
+;;     テーブル *sessions* からキー（sの値）の値を探し出し、もしなければ
+;;     make-session を実行する。
+;;
+;;     cgi-get-parameter
+;;         -- クエリ文字列から s の値を取得し整数とする
+;;            もし見つからなければ #f を返す
+;;     hash-table-get
+;;         -- テーブル *sessions* から cgi-get-parameter の結果の整数を
+;;            キーとした値を探す。もし、cgi-get-parameter が #f を返して
+;;            きたら、#f をキーとした値はないので、既定値として第3引数
+;;            （この場合は #f）を返す。
+;;     #f -- キーが見つからない場合の返り値
+;;
+(define (get-session params)
+  (or (hash-table-get *sessions*
+                      (cgi-get-parameter "s" params :convert string->number)
+                      #f)
+      (make-session)))
+
+(define *max-id* (expt 2 64))  ;; 2 の 64乗
+
+;; make-session
+;;
+;; Summery:
+;;     ランダム関数で sid（セッションID） を生成する。それが既存のIDで
+;;     あれば、make-session のやり直し。
+;;     IDに重複が無ければ、sid をスロットにもつ新たなセッションオブジェクト
+;;     を作成し（sessに束縛）、それを *sessions* テーブルに登録する。
+;;     最後にその sess を返す。
+;;
+(define (make-session)
+  (let1 sid (random-integer *max-id*)
+    (cond ((hash-table-get *sessions* sid #f) (make-session))
+          (else (let1 sess (make <session> :sid sid)
+                  (hash-table-put! *sessins* sid sess)
+                  sess)))))
+
+
+
 
