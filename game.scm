@@ -218,12 +218,31 @@
 ;;           (set! (ref session 'location) (list-ref *dungeon* index)))
 ;; ---------------------------------------------------------------------
 
+
+;;
+;; render-content
+;;
+;; Summery:
+;;
+;; Params:
+;;     path -- (ex) http://localhost:8000
+;;     params -- s=12345&d=e
+;; Return:
+;;
+;;
 (define (render-content path params)
+                                        ; session -- クエリ文字列から sessionオブジェクトを取得
   (let ((session (get-session params))
+                                        ; dir -- クエリ文字列から d パラメータを取得
         (dir (cgi-get-parameter "d" params :convert string->symbol)))
+                                        ; (ref session 'location) -- セッションオブジェクトの location スロット
+                                        ; index -- (s . 1) の 1。つまり、進むべき場所の番号
     (and-let* ((index (assoc-ref (cdr (ref session 'location)) dir)))
+                                        ; セッションオブジェクトの history スロットに、今の location スロットを追加
       (push! (ref session 'history) (ref session 'location))
+                                        ; セッションオブジェクトの location スロットに、*dungeon*リストの index番目をセット
       (set! (ref session 'location) (list-ref *dungeon* index)))
+                                        ; location スロットの内容を location に束縛
     (let1 location (ref session 'location)
       (define (render-selector selector)
         (html:li (html:a :href #`"?s=,(ref session 'sid)&d=,(car selector)"
