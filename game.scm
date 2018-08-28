@@ -59,8 +59,8 @@
 ;;     params -- (ex) http://localhost:8080/?s=123456
 ;;
 ;; Summery:
-;;     テーブル *sessions* からキー（sの値）の値を探し出し、もしなければ
-;;     make-session を実行する。
+;;     テーブル *sessions* からキー（sの値=sid）の値（オブジェクト）を
+;;     探し出し、もしなければmake-session を実行する。
 ;;
 ;;     cgi-get-parameter
 ;;         -- クエリ文字列から s の値を取得し整数とする
@@ -97,5 +97,22 @@
                   sess)))))
 
 
+;; Params:
+;;     params -- (ex) http://localhost:8080/?s=123456&d=e
+;;
+;; (session (get-session params))
+;;     Params: params -- 上の例
+;;     Return: <session> -- セッションオブジェクト
+;;
+;; (dir (cgi-get-parameter "d" params :convert string->symbol))
+;;     cgi-get-parameter
+;;         -- "d=e" から、"e" を抽出して、dir に "e"をセットする
+;;                      
+(let ((session (get-session params))
+      (dir (cgi-get-parameter "d" params :convert string->symbol)))
+  )
 
-
+;;
+(and-let* ((index (assoc-ref (cdr (ref session 'location)) dir)))
+          (push! (ref session 'history) (ref session 'location))
+          (set! (ref session 'location) (list-ref *dungeon* index)))
