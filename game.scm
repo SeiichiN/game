@@ -11,6 +11,8 @@
 (use util.list)  ; リスト処理の補助ユーティリティ
 (use srfi-27)    ; 疑似乱数発生器を提供するモジュール
 
+(define *max-id* (expt 2 64))  ;; 2 の 64乗
+
 ;;
 ;; make-server-socket
 ;;     サーバソケットを開いて返す手続き
@@ -139,9 +141,10 @@
      (e . 2))))
 
 (define-class <session> ()
-  ((sid      :init-keyword :sid)                  ; セッションID
-   (location :init-value (list-ref *dungeon* 0))  ; 現在のノード
-   (history  :init-value '())                     ; 訪れたノードの履歴
+  ((sid      :init-keyword :sid)                    ; セッションID
+   (token    :init-value (random-integer *max-id*)) ; 現在の状態
+   (location :init-value (list-ref *dungeon* 0))    ; 現在のノード
+   (history  :init-value '())                       ; 訪れたノードの履歴
    ))
 
 ;; 整数をキーとしたハッシュテーブルを作成
@@ -167,12 +170,14 @@
 ;;     #f -- キーが見つからない場合の返り値
 ;;
 (define (get-session params)
-  (or (hash-table-get *sessions*
-                      (cgi-get-parameter "s" params :convert string->number)
-                      #f)
+  (or (and-let* ([s (hash-table-get *sessions*
+                                    (cgi-get-parameter "s" params :convert string->number)
+                                    #f)]
+                 [(eqv? (ref s 'token)
+                        (cgi-get-parameter "t" params :convert string->number))])
+        (set! (ref s 'token) (random-integer *max-id*))
+        s)
       (make-session)))
-
-(define *max-id* (expt 2 64))  ;; 2 の 64乗
 
 ;; make-session
 ;;
@@ -245,7 +250,7 @@
                                         ; location スロットの内容を location に束縛
     (let1 location (ref session 'location)
       (define (render-selector selector)
-        (html:li (html:a :href #`"?s=,(ref session 'sid)&d=,(car selector)"
+        (html:li (html:a :href #`"?s=,(ref session 'sid)&t=,(ref session 'token)&d=,(car selector)"
                          (get-direction (car selector)) "へ進む")))
       (tree->string
        (html:html
