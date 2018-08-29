@@ -245,9 +245,18 @@
                                         ; セッションオブジェクトの history スロットに、今の location スロットを追加
       (push! (ref session 'history) (ref session 'location))
                                         ; セッションオブジェクトの location スロットに、*dungeon*リストの index番目をセット
+                                        ; つまり、新しい場所のリスト項目を location スロットにセットしている。
       (set! (ref session 'location) (list-ref *dungeon* index)))
-                                        ; location スロットの内容を location に束縛
+                                        ; 新しい location スロットの内容を location に束縛
     (let1 location (ref session 'location)
+                                        ; rener-selector
+                                        ; Summery:
+                                        ;     リンク項目を作成する.
+                                        ;     （例）・北へ進む
+                                        ; Param:
+                                        ;     selector -- (n . 0)
+                                        ; Return:
+                                        ;     <li><a href="localhost:8080?s=XXXXXXX&t=YYYYYYYYY&d=n">北へ進む</a></li>
       (define (render-selector selector)
         (html:li (html:a :href #`"?s=,(ref session 'sid)&t=,(ref session 'token)&d=,(car selector)"
                          (get-direction (car selector)) "へ進む")))
@@ -264,3 +273,4 @@
 (define (main args)
   (run-server)
   0)
+
