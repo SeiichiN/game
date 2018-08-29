@@ -11,8 +11,6 @@
 (use util.list)  ; リスト処理の補助ユーティリティ
 (use srfi-27)    ; 疑似乱数発生器を提供するモジュール
 
-(define *max-id* (expt 2 64))  ;; 2 の 64乗
-
 ;;
 ;; make-server-socket
 ;;     サーバソケットを開いて返す手続き
@@ -99,6 +97,7 @@
 ;;; ここまでは、server.scm と同じ。========================================
 
 
+(define *max-id* (expt 2 64))  ;; 2 の 64乗
 
 ;; 疑似乱数発生器に種を与えて初期化する
 (random-source-randomize! default-random-source)
