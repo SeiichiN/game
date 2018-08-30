@@ -10,6 +10,7 @@
 (use www.cgi)
 (use util.list)  ; リスト処理の補助ユーティリティ
 (use srfi-27)    ; 疑似乱数発生器を提供するモジュール
+(use srfi-26)    ; cut構文
 
 ;;
 ;; make-server-socket
@@ -145,12 +146,26 @@
 (define *max-id* (expt 2 64))  ;; 2 の 64乗
 
 ;;
+;; push-cont!
+;; Summery: 継続手続きを登録する
+;; Params: cont -- 継続手続き
+;; Return: cid -- ハッシュテーブル *conts* のキー
 ;;
 (define (push-cont! cont)
+                                        ; cid -- ランダムな数
   (let1 cid (random-integer *max-id*)
+                                        ; ハッシュテーブル *conts* に キーcid が
+                                        ; 存在していれば、やり直す
     (cond ((hash-table-get *conts* cid #f) (push-cont! cont))
+                                        ; なければ、その cid と cont を登録する
           (else (hash-table-put! *conts* cid cont) cid))))
 
+;;
+;; get-cont
+;; Summery: 継続手続きのキー cid を URL から得る
+;; Params: params -- (ex)c=XXXXXX
+;; Return: *conts* に登録されている手続き
+;;
 (define (get-cont params)
   (hash-table-get *conts*
                   (cgi-get-parameter "c" params :convert string->number)
@@ -190,44 +205,55 @@
 ;; render-content
 ;;
 ;; Summery:
-;;
+;;     URLから cid が得られれば、その手続きを呼び出して実行
+;;     もし無ければ、そのクエリ文字列でアプリの実行
 ;; Params:
 ;;     path -- (ex) http://localhost:8000
-;;     params -- s=12345&d=e
+;;     params -- c=12345
 ;; Return:
 ;;
 ;;
 (define (render-content path params)
                                         ; 継続の起動
+                                        ; get-cont -- 登録された手続きを呼び出す
+                                        ; cut <> params -- その手続きを params を引数にして実行
+                                        ; <> ｰｰ get-cont params の返り値
   (cond ((get-cont params) => (cut <> params))
                                         ; アプリケーションの起動
         (else (run-application params))))
 
+;;
+;; run-application
+;; Summery:
+;;
+;; Params: params -- c=12345
+;;
+;; -----------------------------------------------------------------------
+;; rener-selector
+;; Summery:
+;;     リンク項目を作成する.
+;;     （例）・北へ進む
+;; Param:
+;;     selector -- (n . 0)
+;; Return:
+;;     <li><a href="localhost:8080?c=XXXXXXX">北へ進む</a></li>
 (define (run-application params)
   (let loop ((location (list-ref *dungeon* 0))
              (history '()))
-                                        ; rener-selector
-                                        ; Summery:
-                                        ;     リンク項目を作成する.
-                                        ;     （例）・北へ進む
-                                        ; Param:
-                                        ;     selector -- (n . 0)
-                                        ; Return:
-                                        ;     <li><a href="localhost:8080?s=XXXXXXX&t=YYYYYYYYY&d=n">北へ進む</a></li>
     (define (render-selector selector)
       (let1 cid (push-cont! (lambda (params)
                               (loop (list-ref *dungeon* (cdr selector))
                                     (cons location history))))
-        (html:li (html:a :href #`"?c=,|cid|"
-                         (get-direction (car selector)) "へ進む")))
-      (tree->string
-       (html:html
-        (html:head (html:title "simple httpd"))
-        (html:body (html:p (html-escape-string (car location)))
-                   (html:ul (map render-selector (cdr location)))
-                   (html:hr)
-                   (map (lambda (p) (html:p (html-escape-string (car p))))
-                        (ref session 'history))))))))
+        (html:li (html:a :href #`"?c=,cid"
+                         (get-direction (car selector)) "へ進む"))))
+    (tree->string
+     (html:html
+      (html:head (html:title "simple httpd"))
+      (html:body (html:p (html-escape-string (car location)))
+                 (html:ul (map render-selector (cdr location)))
+                 (html:hr)
+                 (map (lambda (p) (html:p (html-escape-string (car p))))
+                      history))))))
 
 
 (define (main args)
