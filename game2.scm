@@ -140,14 +140,14 @@
 
 ;;
 ;; 継続を登録するためのハッシュテーブル
-;;
+;; 数値をキーとして登録する
 (define *conts* (make-hash-table 'eqv?))
 
 (define *max-id* (expt 2 64))  ;; 2 の 64乗
 
 ;;
 ;; push-cont!
-;; Summery: 継続手続きを登録する
+;; Summery: 継続手続きを新たなキーで登録する
 ;; Params: cont -- 継続手続き
 ;; Return: cid -- ハッシュテーブル *conts* のキー
 ;;
@@ -159,12 +159,15 @@
     (cond ((hash-table-get *conts* cid #f) (push-cont! cont))
                                         ; なければ、その cid と cont を登録する
           (else (hash-table-put! *conts* cid cont) cid))))
+                                        ; *conts* -- ハッシュテーブル
+                                        ; cid -- キー
+                                        ; cont -- 手続き
 
 ;;
 ;; get-cont
-;; Summery: 継続手続きのキー cid を URL から得る
+;; Summery: 継続手続きを得る
 ;; Params: params -- (ex)c=XXXXXX
-;; Return: *conts* に登録されている手続き
+;; Return: cid をキーとして *conts* に登録されている手続き
 ;;
 (define (get-cont params)
   (hash-table-get *conts*
@@ -211,13 +214,13 @@
 ;;     path -- (ex) http://localhost:8000
 ;;     params -- c=12345
 ;; Return:
-;;
+;; ---------------------------------------------------------------------
+;; 継続の起動
+;; get-cont -- 登録された手続きを呼び出す
+;; cut <> params -- その手続きを params を引数にして実行
+;; <> ｰｰ get-cont params の返り値（手続き）
 ;;
 (define (render-content path params)
-                                        ; 継続の起動
-                                        ; get-cont -- 登録された手続きを呼び出す
-                                        ; cut <> params -- その手続きを params を引数にして実行
-                                        ; <> ｰｰ get-cont params の返り値
   (cond ((get-cont params) => (cut <> params))
                                         ; アプリケーションの起動
         (else (run-application params))))
@@ -241,7 +244,7 @@
   (let loop ((location (list-ref *dungeon* 0))
              (history '()))
     (define (render-selector selector)
-      (let1 cid (push-cont! (lambda (params)
+      (let1 cid (push-cont! (lambda (params)        ; 登録する手続き
                               (loop (list-ref *dungeon* (cdr selector))
                                     (cons location history))))
         (html:li (html:a :href #`"?c=,cid"
